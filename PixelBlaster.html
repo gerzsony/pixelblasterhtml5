@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#080818">
+<title>PixelBlaster</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;}
+html,body{width:100%;height:100%;overflow:hidden;background:#080818;color:#fff;font-family:'Courier New',monospace;touch-action:manipulation;}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:480px;margin:0 auto;}
+
+/* HEADER */
+#hdr{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:#0D0D22;border-bottom:1px solid #1E1E40;flex-shrink:0;min-height:38px;}
+.hdr-grp{text-align:center;}
+.hdr-lbl{font-size:9px;letter-spacing:2px;color:#4A4A7A;text-transform:uppercase;}
+.hdr-val{font-size:15px;font-weight:700;color:#E0E0FF;line-height:1.1;}
+#restart-btn{background:transparent;border:1px solid #2A2A50;color:#6060A0;padding:3px 9px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;}
+#restart-btn:active{background:#1A1A35;}
+
+/* IMAGE ZONE */
+#img-zone{display:flex;align-items:center;justify-content:center;background:#06061A;border-bottom:2px solid #1A1A40;flex-shrink:0;padding:5px;position:relative;}
+#img-grid{display:grid;gap:2px;background:#0A0A20;padding:3px;border-radius:4px;border:1px solid #1E1E40;}
+.px{border-radius:2px;position:relative;}
+.px.empty{background:#0E0E28!important;box-shadow:none!important;}
+.px.reachable{outline:2px solid rgba(255,255,255,.6)!important;outline-offset:-1px;animation:reach-pulse .75s ease-in-out infinite;}
+.px.reachable-dim{outline:1px solid rgba(255,255,255,.2)!important;outline-offset:-1px;}
+@keyframes reach-pulse{0%,100%{filter:brightness(1);}50%{filter:brightness(1.6);}}
+.px.boom{animation:boom .3s forwards;}
+@keyframes boom{0%{transform:scale(1);opacity:1;}35%{transform:scale(1.6);opacity:.9;filter:brightness(3);}100%{transform:scale(0);opacity:0;}}
+
+/* MIDDLE ZONE */
+#mid-zone{background:#0A0A1E;border-bottom:2px solid #1A1A40;padding:4px 6px 4px;flex-shrink:0;}
+.zone-lbl{font-size:9px;letter-spacing:2px;color:#3A3A60;text-align:center;text-transform:uppercase;margin-bottom:3px;}
+#mid-slots{display:flex;gap:4px;justify-content:center;}
+.mid-slot{width:54px;height:54px;border:1.5px dashed #1E1E45;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-direction:column;position:relative;}
+.mid-slot.filled{border-style:solid;border-color:#30306A;}
+.mid-slot.firing-anim{animation:slot-kick .16s;}
+@keyframes slot-kick{0%{transform:scale(1);}50%{transform:scale(1.12);}100%{transform:scale(1);}}
+.mid-slot.blocked{border-color:#5A2020!important;}
+.slot-inner{width:40px;height:40px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;}
+.slot-cnt{font-size:18px;font-weight:800;color:#fff;text-shadow:0 1px 4px #0008;line-height:1;}
+.slot-icon{font-size:10px;line-height:1;}
+.slot-empty-icon{font-size:20px;opacity:.18;color:#6060A0;}
+.slot-blocked-x{position:absolute;top:2px;right:4px;font-size:10px;color:#E53935;animation:blink .6s step-start infinite;}
+@keyframes blink{50%{opacity:0;}}
+#status-bar{font-size:10px;letter-spacing:1px;color:#4A4A6A;text-align:center;padding:2px 0 0;min-height:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#status-bar.warn{color:#E55;animation:blink .7s step-start infinite;}
+
+/* POOL ZONE */
+#pool-zone{flex:1;display:flex;flex-direction:column;background:#060614;min-height:0;overflow:hidden;}
+#pool-scroll{flex:1;overflow-y:auto;padding:4px 5px 8px;-webkit-overflow-scrolling:touch;}
+#pool-scroll::-webkit-scrollbar{width:3px;}
+#pool-scroll::-webkit-scrollbar-thumb{background:#1E1E40;border-radius:2px;}
+#pool-grid{display:grid;gap:3px;}
+.p-cell{height:56px;border-radius:9px;display:flex;align-items:center;justify-content:space-between;padding:0 11px;position:relative;overflow:hidden;transition:transform .1s,opacity .2s;}
+.p-cell.top{cursor:pointer;border:1.5px solid rgba(255,255,255,.12);}
+.p-cell.top:active{transform:scale(.93);}
+.p-cell.top::after{content:'▲ ÁTHELYEZ';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);font-size:7px;letter-spacing:1px;color:rgba(255,255,255,.45);}
+.p-cell.locked{opacity:.42;cursor:not-allowed;border:1px solid rgba(255,255,255,.05);}
+.p-cell.locked::after{content:'🔒';position:absolute;bottom:3px;right:6px;font-size:9px;}
+.p-cell.empty-ph{background:rgba(255,255,255,.015);border:1px dashed rgba(255,255,255,.05);cursor:default;opacity:.3;}
+.p-icon{font-size:20px;line-height:1;}
+.p-cnt{font-size:22px;font-weight:800;color:#fff;text-shadow:0 1px 5px #0009;}
+.p-shade{position:absolute;inset:0;border-radius:8px;background:linear-gradient(135deg,rgba(255,255,255,.07) 0%,transparent 60%);pointer-events:none;}
+
+/* WIN OVERLAY */
+#win-ov{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.92);backdrop-filter:blur(4px);align-items:center;justify-content:center;flex-direction:column;gap:13px;text-align:center;padding:20px;}
+#win-ov.on{display:flex;}
+.win-stars{font-size:36px;letter-spacing:4px;}
+.win-title{font-size:30px;font-weight:800;color:#FFD700;letter-spacing:3px;}
+.win-sub{font-size:13px;color:rgba(255,255,255,.6);line-height:1.6;}
+.win-stat{background:#0D0D22;border:1px solid #2A2A50;border-radius:10px;padding:11px 24px;display:flex;gap:22px;}
+.win-s{text-align:center;}
+.win-s-lbl{font-size:10px;color:#4A4A7A;letter-spacing:1px;}
+.win-s-val{font-size:20px;font-weight:800;color:#E0E0FF;}
+.win-s-val.gold{color:#FFD700;}
+.btn-next{background:linear-gradient(135deg,#1E88E5,#42A5F5);color:#fff;border:none;border-radius:12px;padding:13px 42px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:1px;}
+.btn-next:active{transform:scale(.96);}
+
+/* TOAST */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#333355;color:#fff;padding:7px 18px;border-radius:20px;font-size:12px;font-family:inherit;letter-spacing:1px;z-index:300;pointer-events:none;transition:opacity .4s;opacity:0;white-space:nowrap;}
+#toast.show{opacity:1;}
+#toast.err{background:#C0392B;}
+
+/* TUTORIAL */
+#tut{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.97);flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:22px;text-align:center;}
+#tut.on{display:flex;}
+.tut-title{font-size:22px;font-weight:800;color:#FFD700;letter-spacing:2px;}
+.tut-step{background:#0D0D22;border:1px solid #2A2A50;border-radius:10px;padding:12px 16px;font-size:12px;color:rgba(255,255,255,.75);line-height:1.75;max-width:320px;text-align:left;}
+.tut-step b{color:#E0E0FF;}
+.btn-start{background:linear-gradient(135deg,#8E24AA,#AB47BC);color:#fff;border:none;border-radius:12px;padding:13px 42px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:1px;margin-top:4px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hdr">
+    <div class="hdr-grp"><div class="hdr-lbl">PÁLYA</div><div class="hdr-val" id="hv-level">1</div></div>
+    <div class="hdr-grp"><div class="hdr-lbl">BEVETÉS</div><div class="hdr-val" id="hv-moves">0</div></div>
+    <div class="hdr-grp"><div class="hdr-lbl">LEGJOBB</div><div class="hdr-val" id="hv-best">—</div></div>
+    <button id="restart-btn" onclick="restartLevel()">↺ ÚJRA</button>
+  </div>
+  <div id="img-zone"><div id="img-grid"></div></div>
+  <div id="mid-zone">
+    <div class="zone-lbl">⚡ Aktív rombolók — húzd fel a raktárból</div>
+    <div id="mid-slots"></div>
+    <div id="status-bar"></div>
+  </div>
+  <div id="pool-zone">
+    <div class="zone-lbl" style="padding:4px 0 1px">📦 Raktár — csak az első sor áthelyezhető</div>
+    <div id="pool-scroll"><div id="pool-grid"></div></div>
+  </div>
+</div>
+
+<div id="win-ov">
+  <div class="win-stars" id="win-stars">⭐⭐⭐</div>
+  <div class="win-title">GYŐZELEM!</div>
+  <div class="win-sub" id="win-sub">Minden pixel megsemmisítve!</div>
+  <div class="win-stat">
+    <div class="win-s"><div class="win-s-lbl">BEVETÉS</div><div class="win-s-val" id="ws-moves">0</div></div>
+    <div class="win-s"><div class="win-s-lbl">LEGJOBB</div><div class="win-s-val gold" id="ws-best">—</div></div>
+  </div>
+  <button class="btn-next" onclick="nextLevel()">Következő pálya ▶</button>
+</div>
+
+<div id="tut">
+  <div class="tut-title">🎯 PIXEL BLASTER</div>
+  <div class="tut-step">
+    <b>A cél:</b> lőj szét minden négyzetet a felső képből!<br><br>
+    <b>1.</b> Az alsó raktárból (<b>csak az első sor!</b>) húzd fel a rombolókat a középső aktív tárolóba.<br><br>
+    <b>2.</b> A romboló <b>azonnal, automatikusan elkezd lőni</b> — megkeresi az adott oszlop legalsó szabad, azonos színű négyzetét.<br><br>
+    <b>3.</b> Ha egy oszlopból lelőtted az alját, a felette lévő is elérhetővé válik.<br><br>
+    <b>4.</b> Ha elfogy a golyó vagy nincs mit lőni, a romboló kiesik — tölts be másikat.<br><br>
+    <b>Szín = szín:</b> csak azonos színű pixelt lehet lőni! A villogó négyzetek az aktuális célpontok.
+  </div>
+  <button class="btn-start" onclick="startGame()">▶ JÁTÉK INDUL</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const C={
+  COLS:10,ROWS:8,POOL_COLS:4,MID_MAX:5,MAX_B:5,
+  TICK_MS:270,
+  PAL:['#E53935','#1E88E5','#43A047','#FB8C00','#8E24AA','#00ACC1','#D81B60','#FF7043',
+       '#C0CA33','#26A69A','#5C6BC0','#EF9A9A','#66BB6A','#29B6F6','#FFA726','#CE93D8'],
+  ICONS:['💣','🔫','⚡','🚀','💥','🎯','⚙️','🔩','🗜️','⚓','🔧','🔨','⛏️','🔱','💠','🎪'],
+};
+
+let G={};
+let firingTimer=null;
+let isFiringTick=false;
+
+// Storage
+const _mem={};
+function _lsGet(k){try{return localStorage.getItem(k)}catch{return _mem[k]||null}}
+function _lsSet(k,v){try{localStorage.setItem(k,v)}catch{_mem[k]=v}}
+function loadScores(){try{return JSON.parse(_lsGet('pb_scores')||'{}')}catch{return{}}}
+function saveScore(lvl,moves){try{const sc=loadScores();if(!sc[lvl]||sc[lvl]>moves)sc[lvl]=moves;_lsSet('pb_scores',JSON.stringify(sc));}catch{}}
+function getBest(lvl){try{return loadScores()[lvl]||null}catch{return null}}
+
+// RNG
+function mkRng(seed){let s=seed|0;return()=>{s=Math.imul(1664525,s)+1013904223|0;return(s>>>0)/4294967296;};}
+
+// Level generation
+function generateLevel(lvl){
+  const rng=mkRng(lvl*7919+31337);
+  const nColors=Math.min(3+Math.floor((lvl-1)/2),8);
+  const used=new Set(),cIdx=[];
+  while(cIdx.length<nColors){const i=Math.floor(rng()*C.PAL.length);if(!used.has(i)){used.add(i);cIdx.push(i);}}
+  const colors=cIdx.map(i=>C.PAL[i]);
+  const img=Array.from({length:C.ROWS},()=>new Array(C.COLS).fill(0));
+  const pt=(lvl-1)%7;
+
+  if(pt===0){for(let r=0;r<C.ROWS;r++)for(let c=0;c<C.COLS;c++){const ring=Math.min(r,c,C.ROWS-1-r,C.COLS-1-c);img[r][c]=(ring%nColors)+1;}}
+  else if(pt===1){for(let r=0;r<C.ROWS;r++)for(let c=0;c<C.COLS;c++)img[r][c]=((r+c)%nColors)+1;}
+  else if(pt===2){for(let r=0;r<C.ROWS;r++)for(let c=0;c<C.COLS;c++)img[r][c]=(Math.floor(r*nColors/C.ROWS)%nColors)+1;}
+  else if(pt===3){for(let r=0;r<C.ROWS;r++)for(let c=0;c<C.COLS;c++)img[r][c]=(Math.floor(c*nColors/C.COLS)%nColors)+1;}
+  else if(pt===4){for(let r=0;r<C.ROWS;r++)for(let c=0;c<C.COLS;c++){const q=Math.floor(r/(C.ROWS/2))*2+Math.floor(c/(C.COLS/2));img[r][c]=(q%nColors)+1;}}
+  else if(pt===5){for(let r=0;r<C.ROWS;r++)for(let c=0;c<C.COLS;c++){const cr=Math.abs(r-Math.floor(C.ROWS/2)),cc=Math.abs(c-Math.floor(C.COLS/2));if(cr<=1||cc<=1)img[r][c]=(cr===0&&cc===0)?1:(cr<=1&&cc<=1)?2:(cr<=1)?3:Math.min(4,nColors);}}
+  else{
+    for(let r=0;r<C.ROWS;r++)for(let c=0;c<C.COLS;c++)img[r][c]=Math.floor(rng()*nColors)+1;
+    for(let p=0;p<2;p++){const tmp=img.map(row=>[...row]);for(let r=1;r<C.ROWS-1;r++)for(let c=1;c<C.COLS-1;c++){const nb=[img[r-1][c],img[r+1][c],img[r][c-1],img[r][c+1]];const freq={};nb.forEach(v=>freq[v]=(freq[v]||0)+1);let bv=img[r][c],bf=0;for(const[v,f]of Object.entries(freq))if(f>bf){bf=f;bv=+v;}tmp[r][c]=bv;}for(let r=0;r<C.ROWS;r++)img[r]=tmp[r];}
+    if(lvl>5)for(let r=0;r<C.ROWS;r++)for(let c=0;c<C.COLS;c++)if(rng()<.15)img[r][c]=0;
+  }
+
+  const pxCount=new Array(nColors+1).fill(0);
+  for(let r=0;r<C.ROWS;r++)for(let c=0;c<C.COLS;c++)if(img[r][c]>0)pxCount[img[r][c]]++;
+  const destroyers=[];
+  for(let ci=1;ci<=nColors;ci++){let rem=pxCount[ci];while(rem>0){const b=Math.min(rem,Math.ceil(rng()*C.MAX_B)||1);destroyers.push({ci,bullets:b});rem-=b;}}
+  for(let i=destroyers.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[destroyers[i],destroyers[j]]=[destroyers[j],destroyers[i]];}
+  const pool=Array.from({length:C.POOL_COLS},()=>[]);
+  destroyers.forEach((d,i)=>pool[i%C.POOL_COLS].push(d));
+  return{image:img,colors,nColors,pool};
+}
+
+function initLevel(lvl){
+  clearTimeout(firingTimer);firingTimer=null;isFiringTick=false;
+  const gen=generateLevel(lvl);
+  G={level:lvl,moves:0,phase:'play',image:gen.image,colors:gen.colors,nColors:gen.nColors,
+     middle:new Array(C.MID_MAX).fill(null),pool:gen.pool};
+  document.getElementById('hv-level').textContent=lvl;
+  document.getElementById('hv-moves').textContent=0;
+  const b=getBest(lvl);
+  document.getElementById('hv-best').textContent=b?b+'×':'—';
+  document.getElementById('win-ov').classList.remove('on');
+  setStatus('Töltsd fel az aktív tárolót a raktárból!');
+  renderAll();
+}
+function startGame(){document.getElementById('tut').classList.remove('on');initLevel(1);}
+function restartLevel(){if(isFiringTick)return;initLevel(G.level);}
+function nextLevel(){initLevel(G.level+1);}
+
+function shade(hex,f=.55){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return`rgb(${Math.round(r*f)},${Math.round(g*f)},${Math.round(b*f)})`;
+}
+
+/**
+ * For each column, returns the lowest (highest row index) non-empty pixel.
+ * These are the pixels reachable for shooting from below.
+ */
+function getReachableByColumn(){
+  const result=[];
+  for(let c=0;c<C.COLS;c++){
+    let found=null;
+    for(let r=C.ROWS-1;r>=0;r--){if(G.image[r][c]>0){found={r,c,ci:G.image[r][c]};break;}}
+    result.push(found);
+  }
+  return result;
+}
+
+function setStatus(msg,warn=false){
+  const el=document.getElementById('status-bar');
+  el.textContent=msg;el.className=warn?'warn':'';
+}
+function toast(msg,err=false){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className=err?'show err':'show';
+  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2400);
+}
+
+// Move destroyer from pool top row to middle slot
+function moveToMiddle(poolCol){
+  if(G.phase!=='play'||isFiringTick) return;
+  const item=G.pool[poolCol][0];
+  if(!item) return;
+  const slot=G.middle.indexOf(null);
+  if(slot===-1){toast('Tele az aktív tároló! (max 5)',true);return;}
+  G.middle[slot]={...item};
+  G.pool[poolCol].shift();
+  G.moves++;
+  document.getElementById('hv-moves').textContent=G.moves;
+  renderAll();
+  scheduleNextTick();
+}
+
+// ── AUTO-FIRE ENGINE ──────────────────────────────────────────
+function scheduleNextTick(){
+  if(firingTimer||!G.middle.some(m=>m!==null)) return;
+  firingTimer=setTimeout(doFiringTick,C.TICK_MS);
+}
+
+function doFiringTick(){
+  firingTimer=null;
+  if(G.phase!=='play') return;
+  isFiringTick=true;
+
+  const reachable=getReachableByColumn();
+  const claimed=new Set();
+  const shots=[];
+
+  for(let si=0;si<C.MID_MAX;si++){
+    const d=G.middle[si];
+    if(!d) continue;
+    // Find lowest (highest r) reachable pixel of this color, not yet claimed this tick
+    let best=null;
+    for(let c=0;c<C.COLS;c++){
+      const px=reachable[c];
+      if(!px||px.ci!==d.ci) continue;
+      const key=`${px.r},${px.c}`;
+      if(claimed.has(key)) continue;
+      if(!best||px.r>best.r) best=px;
+    }
+    if(best){
+      claimed.add(`${best.r},${best.c}`);
+      shots.push({si,r:best.r,c:best.c,ci:d.ci});
+    }
+  }
+
+  if(shots.length===0){
+    isFiringTick=false;
+    // Check if all active destroyers are blocked
+    const activeCis=new Set(G.middle.filter(Boolean).map(d=>d.ci));
+    const reachableCis=new Set(reachable.filter(Boolean).map(px=>px.ci));
+    if(activeCis.size>0){
+      const allBlocked=[...activeCis].every(ci=>!reachableCis.has(ci));
+      if(allBlocked) setStatus('⚠ Nincs elérhető cél — tölts be más színű rombolót!',true);
+    }
+    return;
+  }
+
+  setStatus('');
+
+  // Animate boom on target pixels
+  const gridEl=document.getElementById('img-grid');
+  shots.forEach(({r,c})=>{
+    const el=gridEl.querySelector(`.px[data-r="${r}"][data-c="${c}"]`);
+    if(el){el.classList.remove('reachable','reachable-dim');el.classList.add('boom');}
+  });
+  // Kick animation on firing slots
+  shots.forEach(({si})=>{
+    const slot=document.querySelector(`#mid-slots .mid-slot:nth-child(${si+1})`);
+    if(slot){slot.classList.remove('firing-anim');void slot.offsetWidth;slot.classList.add('firing-anim');}
+  });
+
+  setTimeout(()=>{
+    shots.forEach(({si,r,c})=>{
+      G.image[r][c]=0;
+      if(G.middle[si]){
+        G.middle[si].bullets--;
+        if(G.middle[si].bullets<=0) G.middle[si]=null;
+      }
+    });
+    isFiringTick=false;
+    renderAll();
+
+    if(!checkWin()){
+      if(G.middle.some(m=>m!==null)) scheduleNextTick();
+      else setStatus('Töltsd fel az aktív tárolót a raktárból!');
+    }
+  },290);
+}
+
+function checkWin(){
+  if(G.phase!=='play') return true;
+  for(let r=0;r<C.ROWS;r++) for(let c=0;c<C.COLS;c++) if(G.image[r][c]>0) return false;
+  G.phase='won';
+  clearTimeout(firingTimer);firingTimer=null;
+  saveScore(G.level,G.moves);
+  const best=getBest(G.level);
+  const isPB=best===G.moves;
+  const stars=G.moves<=4?'⭐⭐⭐':G.moves<=8?'⭐⭐':'⭐';
+  document.getElementById('win-stars').textContent=stars;
+  document.getElementById('ws-moves').textContent=G.moves+' bevetés';
+  document.getElementById('ws-best').textContent=(isPB?'🏆 ':'')+(best?best+'×':'—');
+  document.getElementById('win-sub').textContent=isPB?'Új rekord! 🎉':'Minden pixel megsemmisítve!';
+  setTimeout(()=>document.getElementById('win-ov').classList.add('on'),350);
+  return true;
+}
+
+// ── RENDER ─────────────────────────────────────────────────
+function renderAll(){
+  if(!G||!G.image) return;
+  renderImage();
+  renderMiddle();
+  renderPool();
+}
+
+function renderImage(){
+  const zone=document.getElementById('img-zone');
+  const grid=document.getElementById('img-grid');
+  const avW=zone.clientWidth-10,avH=zone.clientHeight-10;
+  const cs=Math.max(14,Math.min(Math.floor(avW/C.COLS),Math.floor(avH/C.ROWS)));
+  grid.style.gridTemplateColumns=`repeat(${C.COLS},${cs}px)`;
+  grid.innerHTML='';
+
+  const reachable=getReachableByColumn();
+  const reachKeys=new Set(reachable.filter(Boolean).map(px=>`${px.r},${px.c}`));
+  const activeCis=new Set(G.middle.filter(Boolean).map(d=>d.ci));
+
+  for(let r=0;r<C.ROWS;r++) for(let c=0;c<C.COLS;c++){
+    const ci=G.image[r][c];
+    const d=document.createElement('div');
+    d.dataset.r=r;d.dataset.c=c;
+    d.style.width=cs+'px';d.style.height=cs+'px';
+    if(ci===0){
+      d.className='px empty';
+    } else {
+      const col=G.colors[ci-1];
+      d.style.background=col;
+      d.style.boxShadow=`inset 0 -2px 0 ${shade(col)},inset 0 1px 0 ${shade(col,.85)}`;
+      const isReach=reachKeys.has(`${r},${c}`);
+      const isActive=activeCis.has(ci);
+      d.className=isReach&&isActive?'px reachable':isReach?'px reachable-dim':'px';
+    }
+    grid.appendChild(d);
+  }
+}
+
+function renderMiddle(){
+  const el=document.getElementById('mid-slots');
+  el.innerHTML='';
+  const reachable=getReachableByColumn();
+  const reachCis=new Set(reachable.filter(Boolean).map(px=>px.ci));
+  for(let i=0;i<C.MID_MAX;i++){
+    const d=G.middle[i];
+    const slot=document.createElement('div');
+    if(d){
+      const col=G.colors[d.ci-1];
+      const blocked=!reachCis.has(d.ci);
+      slot.className='mid-slot filled'+(blocked?' blocked':'');
+      slot.innerHTML=`<div class="slot-inner" style="background:${col};box-shadow:0 2px 8px ${col}55">
+        <div class="slot-cnt">${d.bullets}</div>
+        <div class="slot-icon">${C.ICONS[d.ci%C.ICONS.length]}</div>
+      </div>${blocked?'<span class="slot-blocked-x">✕</span>':''}`;
+    } else {
+      slot.className='mid-slot';
+      slot.innerHTML=`<span class="slot-empty-icon">+</span>`;
+    }
+    el.appendChild(slot);
+  }
+}
+
+function renderPool(){
+  const grid=document.getElementById('pool-grid');
+  grid.style.gridTemplateColumns=`repeat(${C.POOL_COLS},1fr)`;
+  grid.innerHTML='';
+  const maxLen=Math.max(...G.pool.map(col=>col.length),1);
+  for(let row=0;row<maxLen;row++) for(let col=0;col<C.POOL_COLS;col++){
+    const item=G.pool[col][row];
+    const cell=document.createElement('div');
+    if(!item){cell.className='p-cell empty-ph';grid.appendChild(cell);continue;}
+    const isTop=row===0;
+    const colHex=G.colors[item.ci-1];
+    cell.className='p-cell '+(isTop?'top':'locked');
+    cell.style.background=colHex;
+    if(isTop) cell.style.boxShadow=`0 3px 10px ${colHex}44`;
+    cell.innerHTML=`<span class="p-icon">${C.ICONS[item.ci%C.ICONS.length]}</span><span class="p-cnt">${item.bullets}</span><div class="p-shade"></div>`;
+    if(isTop) cell.addEventListener('click',()=>moveToMiddle(col),{passive:true});
+    grid.appendChild(cell);
+  }
+}
+
+let _rt;
+window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{if(G&&G.image)renderAll();},80);});
+window.addEventListener('load',()=>{
+  const seen=_lsGet('pb_tutSeen');
+  if(!seen){_lsSet('pb_tutSeen','1');document.getElementById('tut').classList.add('on');}
+  else initLevel(1);
+  document.addEventListener('contextmenu',e=>e.preventDefault());
+});
+</script>
+</body>
+</html>
