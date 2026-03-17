@@ -97,45 +97,48 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080818;color:#fff;f
 <body>
 <div id="app">
   <div id="hdr">
-    <div class="hdr-grp"><div class="hdr-lbl">PÁLYA</div><div class="hdr-val" id="hv-level">1</div></div>
-    <div class="hdr-grp"><div class="hdr-lbl">BEVETÉS</div><div class="hdr-val" id="hv-moves">0</div></div>
-    <div class="hdr-grp"><div class="hdr-lbl">LEGJOBB</div><div class="hdr-val" id="hv-best">—</div></div>
-    <button id="restart-btn" onclick="restartLevel()">↺ ÚJRA</button>
+    <div class="hdr-grp"><div class="hdr-lbl">LEVEL</div><div class="hdr-val" id="hv-level">1</div></div>
+    <div class="hdr-grp"><div class="hdr-lbl">MOVES</div><div class="hdr-val" id="hv-moves">0</div></div>
+    <div class="hdr-grp"><div class="hdr-lbl">BEST</div><div class="hdr-val" id="hv-best">—</div></div>
+    <button id="restart-btn" onclick="restartLevel()">↺ RESTART</button>
   </div>
   <div id="img-zone"><div id="img-grid"></div></div>
   <div id="mid-zone">
-    <div class="zone-lbl">⚡ Aktív rombolók — húzd fel a raktárból</div>
+    <div class="zone-lbl">⚡ Active destroyers — pull from storage</div>
     <div id="mid-slots"></div>
     <div id="status-bar"></div>
+	<button id="booster-btn" onclick="useBooster()" style="display:none;margin:auto;">
+		🚀 Use Booster (<span id="booster-count">100</span>)
+	</button>	
   </div>
   <div id="pool-zone">
-    <div class="zone-lbl" style="padding:4px 0 1px">📦 Raktár — csak az első sor áthelyezhető</div>
+    <div class="zone-lbl" style="padding:4px 0 1px">📦 Storage — only the top row can be moved</div>
     <div id="pool-scroll"><div id="pool-grid"></div></div>
   </div>
 </div>
 
 <div id="win-ov">
   <div class="win-stars" id="win-stars">⭐⭐⭐</div>
-  <div class="win-title">GYŐZELEM!</div>
-  <div class="win-sub" id="win-sub">Minden pixel megsemmisítve!</div>
+  <div class="win-title">VICTORY!</div>
+  <div class="win-sub" id="win-sub">All pixels destroyed!</div>
   <div class="win-stat">
-    <div class="win-s"><div class="win-s-lbl">BEVETÉS</div><div class="win-s-val" id="ws-moves">0</div></div>
-    <div class="win-s"><div class="win-s-lbl">LEGJOBB</div><div class="win-s-val gold" id="ws-best">—</div></div>
+    <div class="win-s"><div class="win-s-lbl">MOVES</div><div class="win-s-val" id="ws-moves">0</div></div>
+    <div class="win-s"><div class="win-s-lbl">BEST</div><div class="win-s-val gold" id="ws-best">—</div></div>
   </div>
-  <button class="btn-next" onclick="nextLevel()">Következő pálya ▶</button>
+  <button class="btn-next" onclick="nextLevel()">Next Level ▶</button>
 </div>
 
 <div id="tut">
   <div class="tut-title">🎯 PIXEL BLASTER</div>
   <div class="tut-step">
-    <b>A cél:</b> lőj szét minden négyzetet a felső képből!<br><br>
-    <b>1.</b> Az alsó raktárból (<b>csak az első sor!</b>) húzd fel a rombolókat a középső aktív tárolóba.<br><br>
-    <b>2.</b> A romboló <b>azonnal, automatikusan elkezd lőni</b> — megkeresi az adott oszlop legalsó szabad, azonos színű négyzetét.<br><br>
-    <b>3.</b> Ha egy oszlopból lelőtted az alját, a felette lévő is elérhetővé válik.<br><br>
-    <b>4.</b> Ha elfogy a golyó vagy nincs mit lőni, a romboló kiesik — tölts be másikat.<br><br>
-    <b>Szín = szín:</b> csak azonos színű pixelt lehet lőni! A villogó négyzetek az aktuális célpontok.
+    <b>Goal:</b> destroy every square in the image above!<br><br>
+    <b>1.</b> From the storage below (<b>only the first row!</b>) move destroyers into the active slots.<br><br>
+    <b>2.</b> The destroyer <b>immediately starts firing automatically</b> — it targets the lowest available square of the same color in a column.<br><br>
+    <b>3.</b> Once the bottom square of a column is destroyed, the one above becomes reachable.<br><br>
+    <b>4.</b> If it runs out of ammo or has no target, the destroyer disappears — load another one.<br><br>
+    <b>Color = color:</b> you can only shoot pixels of the same color! The flashing squares are the current targets.
   </div>
-  <button class="btn-start" onclick="startGame()">▶ JÁTÉK INDUL</button>
+  <button class="btn-start" onclick="startGame()">▶ START GAME</button>
 </div>
 
 <div id="toast"></div>
@@ -150,6 +153,71 @@ const C={
 };
 
 let G={};
+let BOOSTERS = 100;
+let LAST_REFILL = null;
+
+function loadBoosters(){
+  const today = new Date().toDateString();
+  const saved = JSON.parse(_lsGet('pb_boosters') || '{}');
+
+  if(saved.date !== today){
+    BOOSTERS = 100;
+    LAST_REFILL = today;
+    _lsSet('pb_boosters', JSON.stringify({date:today, count:BOOSTERS}));
+  }else{
+    BOOSTERS = saved.count ?? 100;
+    LAST_REFILL = saved.date;
+  }
+  
+ 
+  updateBoosterUI();
+}
+
+function saveBoosters(){
+  _lsSet('pb_boosters', JSON.stringify({date:LAST_REFILL,count:BOOSTERS}));
+}
+
+function updateBoosterUI(){
+  const el=document.getElementById("booster-count");
+  if(el) el.textContent=BOOSTERS;
+}
+
+function showBoosterButton(){
+  document.getElementById("booster-btn").style.display="block";
+}
+
+function hideBoosterButton(){
+  document.getElementById("booster-btn").style.display="none";
+}
+
+function useBooster(){
+  if(BOOSTERS<=0){
+    toast("No boosters left today!",true);
+    return;
+  }
+
+  const pixels=[];
+  for(let r=0;r<C.ROWS;r++){
+    for(let c=0;c<C.COLS;c++){
+      if(G.image[r][c]>0) pixels.push({r,c});
+    }
+  }
+
+  for(let i=0;i<5;i++){
+    if(pixels.length===0) break;
+    const idx=Math.floor(Math.random()*pixels.length);
+    const p=pixels.splice(idx,1)[0];
+    G.image[p.r][p.c]=0;
+  }
+
+  BOOSTERS--;
+  saveBoosters();
+  updateBoosterUI();
+  hideBoosterButton();
+  renderAll();
+
+  if(!checkWin()) scheduleNextTick();
+}
 let firingTimer=null;
 let isFiringTick=false;
 
@@ -206,7 +274,7 @@ function initLevel(lvl){
   const b=getBest(lvl);
   document.getElementById('hv-best').textContent=b?b+'×':'—';
   document.getElementById('win-ov').classList.remove('on');
-  setStatus('Töltsd fel az aktív tárolót a raktárból!');
+  setStatus('Fill the active slots from storage!');
   renderAll();
 }
 function startGame(){document.getElementById('tut').classList.remove('on');initLevel(1);}
@@ -248,7 +316,7 @@ function moveToMiddle(poolCol){
   const item=G.pool[poolCol][0];
   if(!item) return;
   const slot=G.middle.indexOf(null);
-  if(slot===-1){toast('Tele az aktív tároló! (max 5)',true);return;}
+  if(slot===-1){toast('Active slots full! (max 5)',true);return;}
   G.middle[slot]={...item};
   G.pool[poolCol].shift();
   G.moves++;
@@ -297,7 +365,11 @@ function doFiringTick(){
     const reachableCis=new Set(reachable.filter(Boolean).map(px=>px.ci));
     if(activeCis.size>0){
       const allBlocked=[...activeCis].every(ci=>!reachableCis.has(ci));
-      if(allBlocked) setStatus('⚠ Nincs elérhető cél — tölts be más színű rombolót!',true);
+      if(allBlocked){
+		  const middleFull = G.middle.every(m=>m!==null);
+		  if(middleFull) showBoosterButton();
+		  setStatus('⚠ No available target — load a destroyer of another color!',true);
+	  }
     }
     return;
   }
@@ -329,7 +401,7 @@ function doFiringTick(){
 
     if(!checkWin()){
       if(G.middle.some(m=>m!==null)) scheduleNextTick();
-      else setStatus('Töltsd fel az aktív tárolót a raktárból!');
+      else setStatus('Fill the active slots from storage!');
     }
   },290);
 }
@@ -344,9 +416,9 @@ function checkWin(){
   const isPB=best===G.moves;
   const stars=G.moves<=4?'⭐⭐⭐':G.moves<=8?'⭐⭐':'⭐';
   document.getElementById('win-stars').textContent=stars;
-  document.getElementById('ws-moves').textContent=G.moves+' bevetés';
+  document.getElementById('ws-moves').textContent=G.moves+' moves';
   document.getElementById('ws-best').textContent=(isPB?'🏆 ':'')+(best?best+'×':'—');
-  document.getElementById('win-sub').textContent=isPB?'Új rekord! 🎉':'Minden pixel megsemmisítve!';
+  document.getElementById('win-sub').textContent=isPB?'New record! 🎉':'All pixels destroyed!';
   setTimeout(()=>document.getElementById('win-ov').classList.add('on'),350);
   return true;
 }
